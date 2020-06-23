@@ -1,5 +1,7 @@
 const axios = require("axios");
 
+
+
 exports.verCardapio = async ( msg, params ) => {
 	let url = 'https://sheetdb.io/api/v1/uvscf0tab9ti1';
 	let cardapio = [];
@@ -26,13 +28,13 @@ exports.verCardapio = async ( msg, params ) => {
 				tipo: 'card',
 				cardapio
 			}
-		
+
 			return resposta
 		})
 		.catch( err => console.log(err) );
 }
 
-// 
+//
 
 exports.verStatus = () => {
 	let resposta = {

@@ -1,106 +1,95 @@
-const express = require("express");
-const bodyParser = require("body-parser");
+const express = require('express');
+const bodyParser = require('body-parser');
 
-const Model = require("./model");
+const Model = require('./model');
+const Db = require('./db');
 
-const app = express( );
+const app = express();
 
-app.use(bodyParser.urlencoded({extended: false}));
-app.use(bodyParser.json())
-
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
-  res.send("Olá Chatbot");
-})
+  res.send('Olá Chatbot');
+});
 
 app.post('/webhook', async (req, res) => {
   const mensagem = req.body.queryResult.queryText;
   const intencao = req.body.queryResult.intent.displayName;
   const parametros = req.body.queryResult.parameters;
-  let responder = ""
+  let responder = '';
 
-  switch(intencao) {
-    case 'VerCardapio': 
-      resposta = await Model.verCardapio( mensagem, parametros );
+  switch (intencao) {
+    case 'VerCardapio':
+      resposta = await Model.verCardapio(mensagem, parametros);
       break;
     case 'verStatus':
-      resposta = Model.verStatus( mensagem, parametros );
+      resposta = Model.verStatus(mensagem, parametros);
       break;
-    default: 
-      resposta = {tipo: 'texto', mensagem: 'Sinto muito, não entendi o que você quer'}
+    case 'tipoPagamento':
+      console.log('Intenção: tipoPagamento');
+      resposta = Db.createCustomer(mensagem, parametros);
+      break;
+    default:
+      resposta = { tipo: 'texto', mensagem: 'Sinto muito, não entendi o que você quer' };
   }
 
+  if (resposta.tipo == 'texto') {
+    responder = {
+      fulfillmentText: 'Resposta do Webhook',
+      fulfillmentMessages: [
+        {
+          text: {
+            text: [resposta.mensagem],
+          },
+        },
+      ],
+      source: '',
+    };
+  } else if (resposta.tipo == 'imagem') {
+    responder = {
+      fulfillmentText: 'Resposta do Webhook',
+      fulfillmentMessages: [
+        {
+          image: {
+            imageUri: resposta.url,
+          },
+        },
+      ],
+      source: '',
+    };
+  } else if (resposta.tipo == 'card') {
+    let meuCardapio = [];
+    let menuItem = {};
 
-  let meuCardapio = [];
-  let menuItem = {};
-
-  for (let i=0; i<resposta.cardapio.length; i++) {
-    menuItem = {
-        "card": {
-          "title": resposta.cardapio[i].titulo,
-          "subtitle": resposta.cardapio[i].preco,
-          "imageUri": resposta.cardapio[i].url,
-        }
+    for (let i = 0; i < resposta.cardapio.length; i++) {
+      menuItem = {
+        card: {
+          title: resposta.cardapio[i].titulo,
+          subtitle: resposta.cardapio[i].preco,
+          imageUri: resposta.cardapio[i].url,
+        },
+      };
+      meuCardapio.push(menuItem);
     }
-    meuCardapio.push(menuItem)
+    responder = {
+      fulfillmentText: 'Resposta do Webhook',
+      fulfillmentMessages: meuCardapio,
+      source: '',
+    };
   }
 
-
-if ( resposta.tipo == 'texto') {
-  responder = {
-    "fulfillmentText": "Resposta do Webhook",
-    "fulfillmentMessages": [
-      {
-        "text": {
-          "text": [
-            resposta.mensagem
-          ]
-        }
-      }
-    ],
-    "source": "",
-  }
-} else if ( resposta.tipo == 'imagem' ) {
-  responder = {
-    "fulfillmentText": "Resposta do Webhook",
-    "fulfillmentMessages": [
-      {
-        "image": {
-          "imageUri": resposta.url,
-        }
-      }
-    ],
-    "source": "",
-  }
-} else if ( resposta.tipo == 'card' ) {
-  responder = {
-    "fulfillmentText": "Resposta do Webhook",
-    "fulfillmentMessages":  meuCardapio,
-    "source": "",
-  }
-}
-
-console.log("resposta final", responder)
+  console.log('resposta final', responder);
 
   res.send(responder);
-})
+});
 
 const porta = process.env.PORT || 8080;
-const hostname = "127.0.0.1"
+const hostname = '127.0.0.1';
 
 app.listen(porta, () => {
   console.log(`servidor rodando em http://${hostname}:${porta}`);
-})
-
-
-
-
-
-
-
-
-
-
+});
 
 // app.get('/pergunta', (req, res) => {
 //   msg=req.query.pergunta;
