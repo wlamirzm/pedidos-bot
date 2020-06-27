@@ -8,6 +8,7 @@ const MYSQL_PORT = 41890;
 
 
 exports.createCustomer = (msg, params) => {
+
   console.log(params);
   let resposta = {
     tipo: 'texto',

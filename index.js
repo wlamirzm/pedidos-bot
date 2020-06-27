@@ -14,38 +14,89 @@ app.get('/', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+  const body = req.body;
+  const queryResult = body.queryResult;
+  const contexto = queryResult.outputContexts[0];
+  const nomeContexto = contexto.name;
+  const outupParameters = contexto.parameters;
+
   const mensagem = req.body.queryResult.queryText;
   const intencao = req.body.queryResult.intent.displayName;
   const parametros = req.body.queryResult.parameters;
+
   let responder = '';
+  let idZap = '';
+
+  if (req.body.queryResult.outputContexts[1].parameters.twilio_sender_id) {
+    idZap = req.body.queryResult.outputContexts[1].parameters.twilio_sender_id;
+  }
+
+  // console.log('body: ', body);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  // console.log('queryResult: ', queryResult);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  // console.log('contexto: ', contexto);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('nomeContexto: ', nomeContexto);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  // console.log('outupParameters: ', outupParameters);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('idZap: ', idZap);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
   switch (intencao) {
-    case 'VerCardapio':
+    case 'verCardapio':
       resposta = await Model.verCardapio(mensagem, parametros);
       break;
     case 'verStatus':
-      resposta = Model.verStatus(mensagem, parametros);
+      // console.log('idZap: ', idZap);
+      resposta = Model.verStatus(mensagem, parametros, idZap);
       break;
     case 'tipoPagamento':
       console.log('Intenção: tipoPagamento');
       resposta = Db.createCustomer(mensagem, parametros);
       break;
+    case 'verHorario':
+      console.log('Intenção: ver_horario');
+      resposta = Model.verHorario(mensagem, parametros);
+      break;
+
     default:
       resposta = { tipo: 'texto', mensagem: 'Sinto muito, não entendi o que você quer' };
   }
 
   if (resposta.tipo == 'texto') {
-    responder = {
-      fulfillmentText: 'Resposta do Webhook',
-      fulfillmentMessages: [
-        {
-          text: {
-            text: [resposta.mensagem],
+    console.log('resposta.contexto: ', resposta.contexto);
+    if (resposta.contexto) {
+      responder = {
+        fulfillmentText: 'Resposta do Webhook',
+        fulfillmentMessages: [
+          {
+            text: {
+              text: [resposta.mensagem],
+            },
           },
-        },
-      ],
-      source: '',
-    };
+        ],
+        outputContexts: [
+          {
+            name: nomeContexto,
+            lifespanCount: 5,
+            parameters: resposta.contexto,
+          },
+        ],
+      };
+    } else {
+      responder = {
+        fulfillmentText: 'Resposta do Webhook',
+        fulfillmentMessages: [
+          {
+            text: {
+              text: [resposta.mensagem],
+            },
+          },
+        ],
+      };
+    }
   } else if (resposta.tipo == 'imagem') {
     responder = {
       fulfillmentText: 'Resposta do Webhook',
