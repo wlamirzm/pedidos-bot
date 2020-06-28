@@ -38,6 +38,12 @@ exports.verStatus = (msg, params, idzap) => {
   let resposta = {
     tipo: 'texto',
     mensagem: 'Calma que já estamos preparando o seu pedido',
+  };
+  return resposta;
+};
+
+exports.carregaCliente = (msg, params, idzap) => {
+  let contexto = {
     contexto: {
       nome: 'Wlamir',
       fone: '(11) 99999-1234',
@@ -46,21 +52,29 @@ exports.verStatus = (msg, params, idzap) => {
       zap: idzap,
     },
   };
-
-  return resposta;
+  return contexto;
 };
 
 exports.verHorario = (msg, params) => {
   let resposta = {
     tipo: 'texto',
     mensagem: 'Nosso horário de funcionamento é de segunda a sexta-feira, das 08:00 ás 19:00 horas',
-    contexto: {
-      nome: 'Wlamir',
-      fone: '(11) 99999-1234',
-      email: 'wlamirzm@gmail.com',
-      cartao: '123456789-11',
-      // zap: prtos.twilio_sender_id,
-    },
+  };
+
+  exports.verDefault = (msg, params, idzap) => {
+    if (idzap == '') {
+      let resposta = {
+        tipo: 'texto',
+        mensagem:
+          'Nosso horário de funcionamento é de segunda a sexta-feira, das 08:00 ás 19:00 horas',
+      };
+    } else {
+      let resposta = {
+        tipo: 'texto',
+        mensagem:
+          'Olá Wlamir, nosso horário de funcionamento é de segunda a sexta-feira, das 08:00 ás 19:00 horas',
+      };
+    }
   };
 
   return resposta;

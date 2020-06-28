@@ -16,9 +16,10 @@ app.get('/', (req, res) => {
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   const queryResult = body.queryResult;
-  const contexto = queryResult.outputContexts[0];
-  const nomeContexto = contexto.name;
-  const outupParameters = contexto.parameters;
+  // const contexto = body.queryResult.outputContexts[0];
+
+  const nomeContexto = body.queryResult.outputContexts[0].name;
+  const outupParameters = body.queryResult.outputContexts[0].parameters;
 
   const mensagem = req.body.queryResult.queryText;
   const intencao = req.body.queryResult.intent.displayName;
@@ -26,21 +27,29 @@ app.post('/webhook', async (req, res) => {
 
   let responder = '';
   let idZap = '';
+  let cartaoNumero = '';
+  let contexto = '';
 
-  if (req.body.queryResult.outputContexts[1].parameters.twilio_sender_id) {
+  if (req.body.queryResult.outputContexts[1].parameters) {
     idZap = req.body.queryResult.outputContexts[1].parameters.twilio_sender_id;
+  }
+
+  if (req.body.queryResult.outputContexts[0].parameters && idZap) {
+    cartaoNumero = req.body.queryResult.outputContexts[0].parameters.contexto.cartao;
+    console.log('Pesquisa do cartaoNumero: ', cartaoNumero);
+    console.log('+++++++++++++++++++++++++++++++++++++++++++');
   }
 
   // console.log('body: ', body);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
   // console.log('queryResult: ', queryResult);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
-  // console.log('contexto: ', contexto);
+  // console.log('outupParameters: ', outupParameters.contexto.cartao);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
   console.log('nomeContexto: ', nomeContexto);
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
-  // console.log('outupParameters: ', outupParameters);
-  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('cartaoNumero: ', cartaoNumero);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
   console.log('idZap: ', idZap);
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
@@ -50,6 +59,12 @@ app.post('/webhook', async (req, res) => {
       break;
     case 'verStatus':
       // console.log('idZap: ', idZap);
+      // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+      if (cartaoNumero == '' && idZap) {
+        console.log('contexto carregado: ', contexto);
+        console.log('+++++++++++++++++++++++++++++++++++++++++++');
+        contexto = Model.carregaCliente(mensagem, parametros, idZap);
+      }
       resposta = Model.verStatus(mensagem, parametros, idZap);
       break;
     case 'tipoPagamento':
@@ -60,14 +75,17 @@ app.post('/webhook', async (req, res) => {
       console.log('Intenção: ver_horario');
       resposta = Model.verHorario(mensagem, parametros);
       break;
-
+    case '000.Default':
+      console.log('Intenção: 000.Default');
+      resposta = Model.verDefault(mensagem, parametros, idZap);
+      break;
     default:
       resposta = { tipo: 'texto', mensagem: 'Sinto muito, não entendi o que você quer' };
   }
 
   if (resposta.tipo == 'texto') {
-    console.log('resposta.contexto: ', resposta.contexto);
-    if (resposta.contexto) {
+    console.log('contexto: ', contexto);
+    if (contexto) {
       responder = {
         fulfillmentText: 'Resposta do Webhook',
         fulfillmentMessages: [
@@ -81,7 +99,7 @@ app.post('/webhook', async (req, res) => {
           {
             name: nomeContexto,
             lifespanCount: 5,
-            parameters: resposta.contexto,
+            parameters: contexto,
           },
         ],
       };
