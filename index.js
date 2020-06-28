@@ -53,19 +53,18 @@ app.post('/webhook', async (req, res) => {
   console.log('idZap: ', idZap);
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
+  if (cartaoNumero == '' && idZap) {
+    console.log('contexto carregado: ', contexto);
+    console.log('+++++++++++++++++++++++++++++++++++++++++++');
+    contexto = Model.carregaCliente(mensagem, parametros, idZap);
+  }
+
   switch (intencao) {
-    case 'verCardapio':
+    case '999.teste':
       resposta = await Model.verCardapio(mensagem, parametros);
       break;
     case 'verStatus':
-      // console.log('idZap: ', idZap);
-      // console.log('+++++++++++++++++++++++++++++++++++++++++++');
-      if (cartaoNumero == '' && idZap) {
-        console.log('contexto carregado: ', contexto);
-        console.log('+++++++++++++++++++++++++++++++++++++++++++');
-        contexto = Model.carregaCliente(mensagem, parametros, idZap);
-      }
-      resposta = Model.verStatus(mensagem, parametros, idZap);
+      resposta = Model.verificaClienteZap(mensagem, parametros, idZap);
       break;
     case 'tipoPagamento':
       console.log('Intenção: tipoPagamento');

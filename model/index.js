@@ -32,7 +32,31 @@ exports.verCardapio = async (msg, params, prtos) => {
     .catch((err) => console.log(err));
 };
 
-//
+exports.verificaClienteZap = async (msg, params, idzap) => {
+  let url = 'https://sheetdb.io/api/v1/uvscf0tab9ti1';
+  let nome = {};
+  let fone = {};
+  let email = {};
+  let cartao = {};
+  let zap = {};
+
+  return await axios
+    .get(url)
+    .then((resultado) => {
+      retorno = resultado.data;
+      let contexto = {
+        contexto: {
+          nome: retorno[0].NOME,
+          fone: retorno[0].FONE,
+          email: retorno[0].EMAIL,
+          cartao: retorno[0].CARTAO,
+          zap: retorno[0].WHATSAPP,
+        },
+      };
+      return contexto;
+    })
+    .catch((err) => console.log(err));
+};
 
 exports.verStatus = (msg, params, idzap) => {
   let resposta = {
