@@ -3,11 +3,11 @@ const bodyParser = require('body-parser');
 
 const Model = require('./model');
 const Db = require('./db');
+const Calendar = require('./calendar');
 
 const app = express();
-
-app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/', (req, res) => {
   res.send('Olá Chatbot');
@@ -23,45 +23,98 @@ app.post('/webhook', async (req, res) => {
 
   const mensagem = req.body.queryResult.queryText;
   const intencao = req.body.queryResult.intent.displayName;
-  const parametros = req.body.queryResult.parameters;
+  const parametros = req.body.queryResult.outputContexts[0].parameters;
 
   let responder = '';
   let idZap = '';
-  let cartaoNumero = '';
-  let contexto = '';
+  let cartao = '';
+  let cpf = '';
+  let contexto = [];
+  let contextoCliente = [];
+
+  // console.log('req.body.queryResult.outputContexts[0]: ', req.body.queryResult.outputContexts[0]);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
   if (req.body.queryResult.outputContexts[1].parameters) {
     idZap = req.body.queryResult.outputContexts[1].parameters.twilio_sender_id;
   }
 
-  if (req.body.queryResult.outputContexts[0].parameters && idZap) {
-    cartaoNumero = req.body.queryResult.outputContexts[0].parameters.contexto.cartao;
-    console.log('Pesquisa do cartaoNumero: ', cartaoNumero);
+  if (req.body.queryResult.outputContexts[0].parameters) {
+    const contexto = req.body.queryResult.outputContexts[0].parameters.contexto;
+  }
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('+ INICIO DO Webhook                       +');
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
+  console.log('PARAMETROS: ', parametros);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
+  if (parametros) {
+    if ('contexto' in parametros) {
+      nome = parametros.contexto.nome;
+      fone = parametros.contexto.fone;
+      email = parametros.contexto.email;
+      cartao = parametros.contexto.cartao;
+      cpf = parametros.contexto.cpf;
+      zap = parametros.contexto.zap;
+
+      console.log('DADOS CARREGADOS DO CONTEXTO DO DIALOGFLOW');
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
+      console.log('nome: ', nome);
+      console.log('fone: ', fone);
+      console.log('email: ', email);
+      console.log('cartao: ', cartao);
+      console.log('cpf: ', cpf);
+      console.log('zap: ', zap);
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
+    }
+  } else {
+    console.log('Sem parametros carregados.');
     console.log('+++++++++++++++++++++++++++++++++++++++++++');
   }
 
+  //if (req.body.queryResult.outputContexts[0].parameters && idZap) {
+  //  cartaoNumero = req.body.queryResult.outputContexts[0].parameters.contexto.//cartao;
+  //  // console.log('Pesquisa do cartaoNumero: ', cartaoNumero);
+  //  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  //}
+
   // console.log('body: ', body);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  // console.log('parametros: ', parametros);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('req.body.queryResult.outputContexts[1]: ', req.body.queryResult.outputContexts[1]);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
   // console.log('queryResult: ', queryResult);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
   // console.log('outupParameters: ', outupParameters.contexto.cartao);
   // console.log('+++++++++++++++++++++++++++++++++++++++++++');
-  console.log('nomeContexto: ', nomeContexto);
+  // console.log('nomeContexto: ', nomeContexto);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('+ CARTÃO:  ', cartao);
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
-  console.log('cartaoNumero: ', cartaoNumero);
-  console.log('+++++++++++++++++++++++++++++++++++++++++++');
-  console.log('idZap: ', idZap);
-  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  // console.log('idZap: ', idZap);
+  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-  if (cartaoNumero == '' && idZap) {
-    console.log('contexto carregado: ', contexto);
+  if (cartao == '' && idZap) {
+    contextoCliente = await Model.carregaCliente(mensagem, parametros, idZap);
+    console.log('contextoCliente carregado: ', contextoCliente);
     console.log('+++++++++++++++++++++++++++++++++++++++++++');
-    contexto = Model.carregaCliente(mensagem, parametros, idZap);
   }
 
   switch (intencao) {
     case '999.teste':
       resposta = await Model.verCardapio(mensagem, parametros);
+      break;
+    case '997.usuario':
+      resposta = Model.verificaCliente(mensagem, parametros, idZap);
+      break;
+    case '996.horarioLivre':
+      resposta = Calendar.verificaHorarioLivre(mensagem, parametros, idZap);
+      break;
+    case '995.agendarHorario - yes':
+      resposta = await Calendar.verificaHorarioLivre(mensagem, parametros, idZap);
       break;
     case 'verStatus':
       resposta = Model.verificaClienteZap(mensagem, parametros, idZap);
@@ -74,19 +127,25 @@ app.post('/webhook', async (req, res) => {
       console.log('Intenção: ver_horario');
       resposta = Model.verHorario(mensagem, parametros);
       break;
-    case '000.Default':
-      console.log('Intenção: 000.Default');
-      resposta = Model.verDefault(mensagem, parametros, idZap);
+    case '998.CarregaFake':
+      console.log('Intenção: 998.CarregaFake');
+      contextoCliente = Model.verDefault(mensagem, parametros, idZap);
+      resposta = Model.verHorario(mensagem, parametros);
       break;
     default:
       resposta = { tipo: 'texto', mensagem: 'Sinto muito, não entendi o que você quer' };
   }
-
+  console.log('resposta: ', resposta);
   if (resposta.tipo == 'texto') {
-    console.log('contexto: ', contexto);
-    if (contexto) {
+    'contexto' in contextoCliente
+      ? console.log('contexto detected')
+      : console.log('contexto missing');
+
+    // console.log('contextoCliente.contexto: ', contextoCliente.contexto);
+    // console.log('contextoCliente.contexto.length: ', contextoCliente.contexto.length);
+    if ('contexto' in contextoCliente) {
       responder = {
-        fulfillmentText: 'Resposta do Webhook',
+        fulfillmentText: resposta.mensagem,
         fulfillmentMessages: [
           {
             text: {
@@ -98,13 +157,13 @@ app.post('/webhook', async (req, res) => {
           {
             name: nomeContexto,
             lifespanCount: 5,
-            parameters: contexto,
+            parameters: contextoCliente,
           },
         ],
       };
     } else {
       responder = {
-        fulfillmentText: 'Resposta do Webhook',
+        fulfillmentText: resposta.mensagem,
         fulfillmentMessages: [
           {
             text: {
@@ -147,7 +206,8 @@ app.post('/webhook', async (req, res) => {
     };
   }
 
-  console.log('resposta final', responder);
+  console.log('resposta final: ', responder);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
   res.send(responder);
 });
@@ -157,6 +217,7 @@ const hostname = '127.0.0.1';
 
 app.listen(porta, () => {
   console.log(`servidor rodando em http://${hostname}:${porta}`);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
 });
 
 // app.get('/pergunta', (req, res) => {
