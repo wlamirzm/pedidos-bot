@@ -2,10 +2,14 @@
 const express = require('express');
 const app = express();
 const { google } = require('googleapis');
-let horarios = {
+
+let horarioOcupado = {
   agenda: [],
 };
 
+let horarioLivre = {
+  agenda: [],
+};
 let bodyParser = require('body-parser');
 app.use(bodyParser.json()); // to support JSON-encoded bodies
 app.use(
@@ -19,6 +23,8 @@ app.use(express.static('public'));
 
 const calendarId = 'g60iv2cl5r96o172dbiqodttpk@group.calendar.google.com';
 const { JWT } = require('google-auth-library');
+const { stringify } = require('actions-on-google/dist/common');
+const { analytics } = require('googleapis/build/src/apis/analytics');
 
 const serviceAccount = {
   type: 'service_account',
@@ -36,6 +42,8 @@ const serviceAccount = {
 };
 
 const timeZoneOffset = '-03:00';
+const startTime = '08:00';
+const endTime = '20:00';
 
 const serviceAccountAuth = new JWT({
   email: serviceAccount.client_email,
@@ -78,19 +86,87 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
 
   return getFreeAvail(dateTimeStart, dateTimeEnd)
     .then((res) => {
-      // console.log('Existem eventos programados: ', res.data);
-      // console.log('Horarios ocupados: ', res.data.calendars);
       var events = res.data.calendars[calendarId].busy;
-
       for (let i = 0; i < events.length; i++) {
         let horaStart = events[i].start.split('T')[1].substr(0, 5);
         let horaEnd = events[i].end.split('T')[1].substr(0, 5);
-
-        let reservado = `${horaStart},${horaEnd}`;
-
-        horarios.agenda.push({ reservado });
-        console.log(`horarios[${i}]: ${horarios.agenda[i].reservado}`);
+        horarioOcupado.agenda[i] = {
+          start: horaStart,
+          end: horaEnd,
+        };
       }
+      itemLivre = 0;
+      itemOcupado = 0;
+      horarioLivreStart = startTime;
+      horarioLivreEnd = '';
+
+      console.log('horarioLivre.agenda[0]:', horarioLivre.agenda[0]);
+
+      // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
+      // console.log('horarioOcupado.agenda: ', horarioOcupado.agenda);
+      // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
+
+      for (let itemOcupado = 0; itemOcupado < horarioOcupado.agenda.length; itemOcupado++) {
+        /*
+        console.log(
+          'horarioOcupado.agenda[itemOcupado].start: ',
+          horarioOcupado.agenda[itemOcupado].start
+        );
+        console.log(
+          'horarioOcupado.agenda[itemOcupado].end: ',
+          horarioOcupado.agenda[itemOcupado].end
+        );
+        */
+        if (compararHora(horarioOcupado.agenda[itemOcupado].start, horarioLivreStart) === true) {
+          console.log(
+            'horarioOcupado.agenda[itemOcupado].start: ',
+            horarioOcupado.agenda[itemOcupado].start
+          );
+          console.log('endTime: ', endTime);
+          if (compararHora(endTime, horarioOcupado.agenda[itemOcupado].start)) {
+            horarioLivre.agenda[itemLivre] = {
+              start: horarioLivreStart,
+              end: horarioOcupado.agenda[itemOcupado].start,
+            };
+            itemLivre += 1;
+            console.log('itemLivre:', itemLivre);
+          } else {
+            horarioLivre.agenda[itemLivre] = {
+              start: horarioLivreStart,
+              end: endTime,
+            };
+          }
+        }
+        if (compararHora(horarioOcupado.agenda[itemOcupado].end, startTime)) {
+          if (compararHora(endTime, horarioOcupado.agenda[itemOcupado].end)) {
+            horarioLivreStart = horarioOcupado.agenda[itemOcupado].end;
+            console.log('horarioLivreStart:', horarioLivreStart);
+          }
+        }
+      }
+
+      /*
+      for (let itemOcupado = 0; itemOcupado < horarioOcupado.length; itemOcupado++) {
+        console.log('horarioOcupado[itemOcupado].start:', horarioOcupado[itemOcupado].start);
+        console.log('startTime: ', startTime);
+        if (horarioOcupado[itemOcupado].start > startTime) {
+          console.log('horarioOcupado[itemOcupado].start > startTime');
+          if (horarioOcupado[itemOcupado].start < endTime) {
+            horarioLivre[itemLivre] = {
+              end: horarioOcupado[itemOcupado].start,
+            };
+            itemOcupado = itemOcupado + 1;
+          }
+        }
+      }
+      */
+      /*
+      horarioLivre.agenda[0] = {
+        start: '00:00',
+        end: '24:00',
+      };
+      console.log('horarioLivre.agenda[0]: ', horarioLivre.agenda[0]);
+      */
 
       // console.log('events: ', events);
       // console.log('events[0]: ', events[0]);
@@ -98,7 +174,7 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
 
       // const dateTimeStart = new Date(Date.parse(data.split('T')[0] + 'T' + '00:00:00'));
       // console.log('events[0].start.split(T)[0]: ', events[0].start.split('T')[0]);
-      //console.log('events[0].start.split(T)[1]:', events[0].start.split('T')[1]);
+      // console.log('events[0].start.split(T)[1]:', events[0].start.split('T')[1]);
       // console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
       // let horaStart = events[0].start.split('T')[1];
@@ -108,22 +184,13 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
       // console.log('events[0].end.split(T)[1]:  ', events[0].end.split('T')[1]);
       // console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-      console.log(horarios);
-      //console.log('horaEnd:   ', horaEnd.substr(0, 5));
+      console.log('horarioLivre: ', horarioLivre);
       console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-      // console.log(`start: ${horaStart.substr(0, 5)}, end: ${horaEnd.substr(0, 5)}`);
-      // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+      console.log('horarioOcupado: ', horarioOcupado);
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
       const horaCompleta = events[0].start.split('T')[1];
-      // const horaCheia = horaCompleta.split(':')[0];
-      // const horaMinuto = horaCompleta.split(':')[1];
-      // console.log('horaCheia: ', horaCheia);
-      // console.log('horaMinuto: ', horaMinuto);
-
-      // const start = horaCompleta.substr(0, 5);
-      // console.log('start: ', start);
-
-      // console.log('events.length[1]: ', events.length);
 
       let mensagem = `Excelente, seu serviço esta agendado para ${agendamentoString} `;
 
@@ -170,6 +237,18 @@ function formatData(date) {
   var ano = date.getFullYear();
 
   return dia + ' ' + nomeMes[mesIndex] + ' ' + ano;
+}
+
+// Verifica se hora1 é maior que hora2.
+function compararHora(hora1, hora2) {
+  hora1 = hora1.split(':');
+  hora2 = hora2.split(':');
+
+  var d = new Date();
+  var data1 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora1[0], hora1[1]);
+  var data2 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora2[0], hora2[1]);
+
+  return data1 > data2;
 }
 
 function getFreeAvail(dateTimeStart, dateTimeEnd) {
