@@ -3,13 +3,14 @@ const express = require('express');
 const app = express();
 const { google } = require('googleapis');
 
-let horarioOcupado = {
+let horarioOcc = {
   agenda: [],
 };
 
 let horarioLivre = {
   agenda: [],
 };
+
 let bodyParser = require('body-parser');
 app.use(bodyParser.json()); // to support JSON-encoded bodies
 app.use(
@@ -22,6 +23,7 @@ app.use(
 app.use(express.static('public'));
 
 const calendarId = 'g60iv2cl5r96o172dbiqodttpk@group.calendar.google.com';
+// const calendarId = 'ksndv59hcefogutnu741c5uh08@group.calendar.google.com';
 const { JWT } = require('google-auth-library');
 const { stringify } = require('actions-on-google/dist/common');
 const { analytics } = require('googleapis/build/src/apis/analytics');
@@ -44,6 +46,9 @@ const serviceAccount = {
 const timeZoneOffset = '-03:00';
 const startTime = '08:00';
 const endTime = '20:00';
+
+const startIntervalo = '12:00';
+const endIntervalo = '14:00';
 
 const serviceAccountAuth = new JWT({
   email: serviceAccount.client_email,
@@ -74,9 +79,9 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
   console.log('+ INICIO DA PESQUISA DE H LIVRES          +');
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-  // console.log('dateTimeStart: ', dateTimeStart);
-  // console.log('dateTimeEnd: ', dateTimeEnd);
-  // console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log('dateTimeStart: ', dateTimeStart);
+  console.log('dateTimeEnd: ', dateTimeEnd);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
   /*
   const agendamentoString =
@@ -90,7 +95,7 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
       for (let i = 0; i < events.length; i++) {
         let horaStart = events[i].start.split('T')[1].substr(0, 5);
         let horaEnd = events[i].end.split('T')[1].substr(0, 5);
-        horarioOcupado.agenda[i] = {
+        horarioOcc.agenda[i] = {
           start: horaStart,
           end: horaEnd,
         };
@@ -100,47 +105,72 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
       horarioLivreStart = startTime;
       horarioLivreEnd = '';
 
-      console.log('horarioLivre.agenda[0]:', horarioLivre.agenda[0]);
+      if (compararHora(startIntervalo, '00:00') && compararHora(endIntervalo, '00:00')) {
+        horarioOcc.agenda[horarioOcc.agenda.length] = {
+          start: startIntervalo,
+          end: endIntervalo,
+        };
+      }
 
-      // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
-      // console.log('horarioOcupado.agenda: ', horarioOcupado.agenda);
-      // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
+      const horarioOcupado = horarioOcc.agenda.sort(
+        (a, b) =>
+          a.start.split(':')[0] * 60 +
+          a.start.split(':')[1] -
+          (b.start.split(':')[0] * 60 + b.start.split(':')[1])
+      );
+      /*
+      horarioOcc.agenda.sort(function (a, b) {
+        hora1 = a.split(':');
+        hora2 = b.split(':');
 
-      for (let itemOcupado = 0; itemOcupado < horarioOcupado.agenda.length; itemOcupado++) {
-        /*
-        console.log(
-          'horarioOcupado.agenda[itemOcupado].start: ',
-          horarioOcupado.agenda[itemOcupado].start
-        );
-        console.log(
-          'horarioOcupado.agenda[itemOcupado].end: ',
-          horarioOcupado.agenda[itemOcupado].end
-        );
-        */
-        if (compararHora(horarioOcupado.agenda[itemOcupado].start, horarioLivreStart) === true) {
-          console.log(
-            'horarioOcupado.agenda[itemOcupado].start: ',
-            horarioOcupado.agenda[itemOcupado].start
-          );
-          console.log('endTime: ', endTime);
-          if (compararHora(endTime, horarioOcupado.agenda[itemOcupado].start)) {
-            horarioLivre.agenda[itemLivre] = {
-              start: horarioLivreStart,
-              end: horarioOcupado.agenda[itemOcupado].start,
-            };
-            itemLivre += 1;
-            console.log('itemLivre:', itemLivre);
-          } else {
-            horarioLivre.agenda[itemLivre] = {
-              start: horarioLivreStart,
-              end: endTime,
-            };
+        var d = new Date();
+        var data1 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora1[0], hora1[1]);
+        var data2 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora2[0], hora2[1]);
+
+        return data1 - data2;
+      });
+*/
+      console.log('horarioOcc(sort): ', horarioOcc);
+
+      console.log('horarioOcupado: ', horarioOcupado);
+
+      if (horarioOcupado.length == 0) {
+        horarioLivre.agenda[0] = {
+          start: startTime,
+          end: endTime,
+        };
+      } else {
+        for (let itemOcupado = 0; itemOcupado < horarioOcupado.length; itemOcupado++) {
+          if (compararHora(horarioOcupado[itemOcupado].start, horarioLivreStart)) {
+            if (compararHora(endTime, horarioOcupado[itemOcupado].start)) {
+              horarioLivre.agenda[itemLivre] = {
+                start: horarioLivreStart,
+                end: horarioOcupado[itemOcupado].start,
+              };
+              itemLivre += 1;
+            } else {
+              horarioLivre.agenda[itemLivre] = {
+                start: horarioLivreStart,
+                end: endTime,
+              };
+              itemLivre += 1;
+            }
           }
-        }
-        if (compararHora(horarioOcupado.agenda[itemOcupado].end, startTime)) {
-          if (compararHora(endTime, horarioOcupado.agenda[itemOcupado].end)) {
-            horarioLivreStart = horarioOcupado.agenda[itemOcupado].end;
-            console.log('horarioLivreStart:', horarioLivreStart);
+          if (compararHora(horarioOcupado[itemOcupado].end, startTime)) {
+            if (compararHora(endTime, horarioOcupado[itemOcupado].end)) {
+              horarioLivreStart = horarioOcupado[itemOcupado].end;
+              // console.log('horarioLivreStart:', horarioLivreStart);
+              // console.log('itemOcupado: ', itemOcupado);
+              if (itemOcupado === horarioOcupado.length - 1) {
+                // console.log('itemOcupado: ', itemOcupado);
+                // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
+                horarioLivre.agenda[itemLivre] = {
+                  start: horarioLivreStart,
+                  end: endTime,
+                };
+                itemLivre += 1;
+              }
+            }
           }
         }
       }
@@ -190,7 +220,7 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
       console.log('horarioOcupado: ', horarioOcupado);
       console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-      const horaCompleta = events[0].start.split('T')[1];
+      // const horaCompleta = events[0].start.split('T')[1];
 
       let mensagem = `Excelente, seu serviço esta agendado para ${agendamentoString} `;
 
