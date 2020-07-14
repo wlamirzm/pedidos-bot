@@ -7,9 +7,7 @@ let horarioOcc = {
   agenda: [],
 };
 
-let horarioLivre = {
-  agenda: [],
-};
+let horarioLivre = new Array('');
 
 let bodyParser = require('body-parser');
 app.use(bodyParser.json()); // to support JSON-encoded bodies
@@ -58,6 +56,59 @@ const serviceAccountAuth = new JWT({
 
 const calendar = google.calendar('v3');
 
+exports.agendaConsulta = (msg, params, idzap) => {
+  console.log('AGENDAMENTO-YES ACIONADO');
+  let cliente = 'A definir';
+  let tipo = 'Consulta';
+  let servico = 'Consulta médica';
+  let data = params.data;
+  let hora = params.horario;
+
+  console.log('cliente: ', cliente);
+  console.log('tipo: ', tipo);
+  console.log('servico: ', servico);
+  console.log('data: ', data);
+  console.log('hora: ', hora);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
+  // loadClient();
+  // authenticate();
+
+  const dateTimeStart = new Date(Date.parse(data.split('T')[0] + 'T' + hora + ':00'));
+  const dateTimeEnd = new Date(new Date(dateTimeStart).setHours(dateTimeStart.getHours() + 1));
+
+  // const dateTimeStart = new Date(
+  //   Date.parse(data.split('T')[0] + 'T' + hora.split('T')[1].split('-')[0] + timeZoneOffset)
+  // );
+  // const dateTimeEnd = new Date(new Date(dateTimeStart).setHours(dateTimeStart.getHours() + 1));
+
+  const agendamentoString = formatData(new Date(dateTimeStart)) + ' ás ' + hora + ' horas';
+
+  console.log('dateTimeStart: ', dateTimeStart);
+  console.log('dateTimeEnd: ', dateTimeEnd);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+
+  return criarEventoCalendario(dateTimeStart, dateTimeEnd, servico, tipo, cliente)
+    .then(() => {
+      let mensagem = `Excelente, seu serviço esta agendado para ${agendamentoString} `;
+      console.log(mensagem);
+      let resposta = {
+        tipo: 'texto',
+        mensagem: mensagem,
+      };
+      return resposta;
+    })
+    .catch(() => {
+      let mensagem = `Desculpe, não temos mais vaga para ${agendamentoString}.`;
+      console.log(mensagem);
+      let resposta = {
+        tipo: 'texto',
+        mensagem: mensagem,
+      };
+      return resposta;
+    });
+};
+
 exports.verificaHorarioLivre = (msg, params, idzap) => {
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
   console.log('verificaHorarioLivre ');
@@ -67,15 +118,12 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
   let data = params.data;
-  // let hora = params.body.queryResult.parameters['hora'];
   let hora = '00:00:00';
 
   const dateTimeStart = new Date(Date.parse(data.split('T')[0] + 'T' + '00:00:00'));
 
   const dateTimeEnd = new Date(new Date(dateTimeStart).setHours(dateTimeStart.getHours() + 24));
 
-  // const dateTimeStart = new Date('2020-07-08T00:00:00.000Z');
-  // const dateTimeEnd = new Date('2020-07-10T00:00:00.000Z');
   console.log('+ INICIO DA PESQUISA DE H LIVRES          +');
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
@@ -83,10 +131,6 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
   console.log('dateTimeEnd: ', dateTimeEnd);
   console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-  /*
-  const agendamentoString =
-    formatData(new Date(data.split('T')[0])) + ' as ' + hora.split('T')[1].split('-')[0];
-*/
   const agendamentoString = '12/02 as 15h';
 
   return getFreeAvail(dateTimeStart, dateTimeEnd)
@@ -118,24 +162,13 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
           a.start.split(':')[1] -
           (b.start.split(':')[0] * 60 + b.start.split(':')[1])
       );
-      /*
-      horarioOcc.agenda.sort(function (a, b) {
-        hora1 = a.split(':');
-        hora2 = b.split(':');
 
-        var d = new Date();
-        var data1 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora1[0], hora1[1]);
-        var data2 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hora2[0], hora2[1]);
+      // console.log('horarioOcc(sort): ', horarioOcc);
 
-        return data1 - data2;
-      });
-*/
-      console.log('horarioOcc(sort): ', horarioOcc);
-
-      console.log('horarioOcupado: ', horarioOcupado);
+      // console.log('horarioOcupado: ', horarioOcupado);
 
       if (horarioOcupado.length == 0) {
-        horarioLivre.agenda[0] = {
+        horarioLivre[0] = {
           start: startTime,
           end: endTime,
         };
@@ -143,13 +176,13 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
         for (let itemOcupado = 0; itemOcupado < horarioOcupado.length; itemOcupado++) {
           if (compararHora(horarioOcupado[itemOcupado].start, horarioLivreStart)) {
             if (compararHora(endTime, horarioOcupado[itemOcupado].start)) {
-              horarioLivre.agenda[itemLivre] = {
+              horarioLivre[itemLivre] = {
                 start: horarioLivreStart,
                 end: horarioOcupado[itemOcupado].start,
               };
               itemLivre += 1;
             } else {
-              horarioLivre.agenda[itemLivre] = {
+              horarioLivre[itemLivre] = {
                 start: horarioLivreStart,
                 end: endTime,
               };
@@ -159,12 +192,8 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
           if (compararHora(horarioOcupado[itemOcupado].end, startTime)) {
             if (compararHora(endTime, horarioOcupado[itemOcupado].end)) {
               horarioLivreStart = horarioOcupado[itemOcupado].end;
-              // console.log('horarioLivreStart:', horarioLivreStart);
-              // console.log('itemOcupado: ', itemOcupado);
               if (itemOcupado === horarioOcupado.length - 1) {
-                // console.log('itemOcupado: ', itemOcupado);
-                // console.log('horarioOcupado.agenda.length:', horarioOcupado.agenda.length);
-                horarioLivre.agenda[itemLivre] = {
+                horarioLivre[itemLivre] = {
                   start: horarioLivreStart,
                   end: endTime,
                 };
@@ -175,54 +204,31 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
         }
       }
 
-      /*
-      for (let itemOcupado = 0; itemOcupado < horarioOcupado.length; itemOcupado++) {
-        console.log('horarioOcupado[itemOcupado].start:', horarioOcupado[itemOcupado].start);
-        console.log('startTime: ', startTime);
-        if (horarioOcupado[itemOcupado].start > startTime) {
-          console.log('horarioOcupado[itemOcupado].start > startTime');
-          if (horarioOcupado[itemOcupado].start < endTime) {
-            horarioLivre[itemLivre] = {
-              end: horarioOcupado[itemOcupado].start,
-            };
-            itemOcupado = itemOcupado + 1;
-          }
-        }
-      }
-      */
-      /*
-      horarioLivre.agenda[0] = {
-        start: '00:00',
-        end: '24:00',
-      };
-      console.log('horarioLivre.agenda[0]: ', horarioLivre.agenda[0]);
-      */
-
-      // console.log('events: ', events);
-      // console.log('events[0]: ', events[0]);
-      // console.log('events[0].start: ', events[0].start);
-
-      // const dateTimeStart = new Date(Date.parse(data.split('T')[0] + 'T' + '00:00:00'));
-      // console.log('events[0].start.split(T)[0]: ', events[0].start.split('T')[0]);
-      // console.log('events[0].start.split(T)[1]:', events[0].start.split('T')[1]);
-      // console.log('+++++++++++++++++++++++++++++++++++++++++++');
-
-      // let horaStart = events[0].start.split('T')[1];
-      // let horaEnd = events[0].end.split('T')[1];
-
-      // console.log('events[0].end.split(T)[0]: ', events[0].end.split('T')[0]);
-      // console.log('events[0].end.split(T)[1]:  ', events[0].end.split('T')[1]);
-      // console.log('+++++++++++++++++++++++++++++++++++++++++++');
-
-      console.log('horarioLivre: ', horarioLivre);
-      console.log('+++++++++++++++++++++++++++++++++++++++++++');
-
       console.log('horarioOcupado: ', horarioOcupado);
       console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-      // const horaCompleta = events[0].start.split('T')[1];
+      console.log('horarioLivre: ', horarioLivre);
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
+      let horarioLivreConsulta = '';
+      let acc = 0;
+      console.log('horarioLivre.length: ', horarioLivre.length);
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
 
-      let mensagem = `Excelente, seu serviço esta agendado para ${agendamentoString} `;
+      for (let i = 0; i < horarioLivre.length; i++) {
+        let horaStart = horarioLivre[i].start.split(':')[0].substr(0, 2);
+        let horaEnd = horarioLivre[i].end.split(':')[0].substr(0, 2);
+        console.log('horaStart: ', horaStart);
+        console.log('horaEnd: ', horaEnd);
+
+        for (let j = horaStart; j < horaEnd; j++) {
+          acc += 1;
+          horarioLivreConsulta = `${horarioLivreConsulta} [${j}:00] \n`;
+          // console.log('horarioLivreConsulta: ', horarioLivreConsulta);
+        }
+      }
+
+      console.log('+++++++++++++++++++++++++++++++++++++++++++');
+      let mensagem = `Temos os horário livres abaixo:\n${horarioLivreConsulta} \n`;
 
       console.log('MENSAGEM DE RETORNO: ');
       console.log(mensagem);
@@ -313,3 +319,40 @@ exports.agendarHorario = (msg, params, idzap) => {
   };
   return resposta;
 };
+
+function criarEventoCalendario(dateTimeStart, dateTimeEnd, servico, tipo, cliente) {
+  return new Promise((resolve, reject) => {
+    calendar.events.list(
+      {
+        auth: serviceAccountAuth, // List events for time period
+        calendarId: calendarId,
+        timeMin: dateTimeStart.toISOString(),
+        timeMax: dateTimeEnd.toISOString(),
+        timeZone: timeZoneOffset,
+      },
+      (err, calendarResponse) => {
+        // Check if there is a event already on the Calendar
+        if (err || calendarResponse.data.items.length > 0) {
+          reject(err || new Error('Requisição conflita com outros agendamentos'));
+        } else {
+          // Create event for the requested time period
+          calendar.events.insert(
+            {
+              auth: serviceAccountAuth,
+              calendarId: calendarId,
+              resource: {
+                summary: servico + '-' + tipo + '-',
+                description: '[' + cliente + '][' + servico + '][' + tipo + ']',
+                start: { dateTime: dateTimeStart },
+                end: { dateTime: dateTimeEnd },
+              },
+            },
+            (err, event) => {
+              err ? reject(err) : resolve(event);
+            }
+          );
+        }
+      }
+    );
+  });
+}
