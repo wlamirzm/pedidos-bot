@@ -116,11 +116,15 @@ app.post('/webhook', async (req, res) => {
     case '995.agendarHorario - yes':
       resposta = await Calendar.verificaHorarioLivre(mensagem, parametros, idZap);
       break;
+    case '995.agendarHorario - yes - custom':
+      console.log('995.agendarHorario - yes - custom');
+      resposta = await Calendar.agendaConsulta(mensagem, parametros, idZap);
+      break;
     case '995.agendaConsulta':
       resposta = await Calendar.agendaConsulta(mensagem, parametros, idZap);
       break;
     case 'verStatus':
-      resposta = Model.verificaClienteZap(mensagem, parametros, idZap);
+      resposta = await Model.verificaClienteZap(mensagem, parametros, idZap);
       break;
     case 'tipoPagamento':
       console.log('Intenção: tipoPagamento');

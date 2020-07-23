@@ -62,8 +62,24 @@ exports.agendaConsulta = (msg, params, idzap) => {
   let tipo = 'Consulta';
   let servico = 'Consulta médica';
   let data = params.data;
-  let hora = params.horario;
+  let dataHora = params.dateTime;
+  // let hora = params.horario;
+  // console.log('hora processada:');
+  // console.log(data.split('T')[0] + 'T' + data.split('T')[1].split('-')[0] + timeZoneOffset);
 
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  console.log(dataHora);
+  console.log(dataHora.split('T')[1]);
+  console.log(dataHora.split('T')[1].split('-')[0]);
+  console.log(dataHora.split('T')[1].split('-')[0].split(':')[0]);
+  console.log('+++++++++++++++++++++++++++++++++++++++++++');
+  let hora = dataHora.split('T')[1].split('-')[0].split(':')[0];
+
+  /*
+  let hora = new Date(
+    Date.parse(data.split('T')[0] + 'T' + data.split('T')[1].split('-')[0] + timeZoneOffset)
+  );
+  */
   console.log('cliente: ', cliente);
   console.log('tipo: ', tipo);
   console.log('servico: ', servico);
@@ -119,7 +135,7 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
 
   let data = params.data;
   let hora = '00:00:00';
-
+  horarioLivre = [];
   const dateTimeStart = new Date(Date.parse(data.split('T')[0] + 'T' + '00:00:00'));
 
   const dateTimeEnd = new Date(new Date(dateTimeStart).setHours(dateTimeStart.getHours() + 24));
@@ -166,7 +182,7 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
       // console.log('horarioOcc(sort): ', horarioOcc);
 
       // console.log('horarioOcupado: ', horarioOcupado);
-
+      horarioLivre = [];
       if (horarioOcupado.length == 0) {
         horarioLivre[0] = {
           start: startTime,
@@ -226,9 +242,16 @@ exports.verificaHorarioLivre = (msg, params, idzap) => {
           // console.log('horarioLivreConsulta: ', horarioLivreConsulta);
         }
       }
+      let mensagem = '';
+      if (horarioLivreConsulta.length > 8) {
+        mensagem = `Temos os horários livres abaixo:\n${horarioLivreConsulta} \n`;
+      } else {
+        let mensagem = `Temos o horário livre abaixo:\n${horarioLivreConsulta} \n`;
+      }
+      mensagem = `${mensagem} Para qual horário você quer agendar? \n`;
 
       console.log('+++++++++++++++++++++++++++++++++++++++++++');
-      let mensagem = `Temos os horário livres abaixo:\n${horarioLivreConsulta} \n`;
+      console.log('horarioLivreConsulta.length: ', horarioLivreConsulta.length);
 
       console.log('MENSAGEM DE RETORNO: ');
       console.log(mensagem);
